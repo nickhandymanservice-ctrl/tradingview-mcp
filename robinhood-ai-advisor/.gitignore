@@ -1,0 +1,13 @@
+# Secrets & local state — NEVER commit these
+.env
+.rh_advisor_state.json
+*.pickle
+.tokens/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
