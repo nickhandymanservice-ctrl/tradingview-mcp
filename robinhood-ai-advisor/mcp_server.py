@@ -109,5 +109,32 @@ def pending_trade() -> str:
     return _json(_advisor().pending_trade() or {"pending": None})
 
 
+@mcp.tool()
+def analyze_holdings(holdings: list[dict], cash: float = 0.0) -> str:
+    """Run diversification metrics + tips on holdings you pass in.
+
+    Use this to analyze data from the OFFICIAL Robinhood Agentic Trading MCP
+    (https://agent.robinhood.com/mcp/trading): fetch the account's positions
+    there, then pass them here. Each holding is a dict; flexible field names
+    are accepted (symbol/ticker, quantity/shares, price/market_price,
+    average_buy_price/cost_basis, asset_type/type, sector). Returns JSON with
+    "metrics" and "tips". This reads nothing and trades nothing.
+    """
+    return _json(_advisor().analyze_records(holdings, cash))
+
+
+@mcp.tool()
+def plan_for_holdings(
+    holdings: list[dict],
+    cash: float = 0.0,
+    risk_profile: str = "balanced",
+    monthly_contribution: float = 0.0,
+) -> str:
+    """Build an investment plan for holdings you pass in (e.g. from Robinhood's
+    official Agentic MCP). Returns target allocation, dollar gaps, a monthly
+    contribution split, and an action checklist."""
+    return _json(_advisor().plan_records(holdings, cash, risk_profile, monthly_contribution))
+
+
 if __name__ == "__main__":
     mcp.run()

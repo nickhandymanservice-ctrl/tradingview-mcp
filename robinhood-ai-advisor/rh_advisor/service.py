@@ -10,6 +10,7 @@ from __future__ import annotations
 from .analysis import compute_metrics, generate_tips
 from .broker import get_broker
 from .config import Settings, load_settings
+from .ingest import portfolio_from_records
 from .planner import build_plan
 from .trading import confirm_order, get_pending_proposal, propose_order
 
@@ -54,6 +55,30 @@ class Advisor:
 
     def plan(self, risk_profile: str | None = None, monthly_contribution: float | None = None) -> dict:
         m = compute_metrics(self.broker.get_portfolio())
+        plan = build_plan(
+            m,
+            risk_profile or self.settings.default_risk_profile,
+            monthly_contribution if monthly_contribution is not None
+            else self.settings.default_monthly_contribution,
+        )
+        return plan.as_dict()
+
+    # ----- analysis on externally-supplied holdings -------------------------
+    # These power the "official Robinhood Agentic MCP as data source" flow:
+    # Claude fetches holdings from agent.robinhood.com/mcp/trading and passes
+    # the records here for diversification/tips/plan analysis.
+    def analyze_records(self, holdings: list[dict], cash: float = 0.0) -> dict:
+        m = compute_metrics(portfolio_from_records(holdings, cash))
+        return {"metrics": m.as_dict(), "tips": [t.as_dict() for t in generate_tips(m)]}
+
+    def plan_records(
+        self,
+        holdings: list[dict],
+        cash: float = 0.0,
+        risk_profile: str | None = None,
+        monthly_contribution: float | None = None,
+    ) -> dict:
+        m = compute_metrics(portfolio_from_records(holdings, cash))
         plan = build_plan(
             m,
             risk_profile or self.settings.default_risk_profile,

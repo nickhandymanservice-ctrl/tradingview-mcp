@@ -12,15 +12,21 @@
 
 ## About the Robinhood connection
 
-- Robinhood has **no official public API**. Live mode uses the community
-  [`robin_stocks`](https://github.com/jmfernandes/robin_stocks) library, which
-  automates Robinhood's private API using your credentials.
-- Because it is unofficial, it can break without notice, and automating account
-  access may carry risks (including, in principle, to your account standing).
-  Use at your own risk and review Robinhood's terms.
-- Your credentials live only in your local `.env` (git-ignored). They are never
-  transmitted anywhere except to Robinhood's own login endpoint by
-  `robin_stocks`.
+There are two ways to connect, with different risk profiles:
+
+1. **Official Robinhood Agentic Trading MCP** (recommended) —
+   `https://agent.robinhood.com/mcp/trading`. Robinhood's own hosted server,
+   authorized via OAuth to a dedicated agentic account, with a broker-side kill
+   switch and per-trade notifications. This is the supported, sanctioned path.
+   See [`ROBINHOOD_AGENTIC.md`](ROBINHOOD_AGENTIC.md). Agentic Trading is itself
+   a real brokerage product — review Robinhood's terms and start small.
+2. **`robin_stocks` (unofficial)** — the community
+   [`robin_stocks`](https://github.com/jmfernandes/robin_stocks) library
+   automates Robinhood's private API using your credentials. It can break
+   without notice and automating account access may carry risks (including, in
+   principle, to your account standing). Use at your own risk. Your credentials
+   live only in your local `.env` (git-ignored) and are sent only to
+   Robinhood's own login endpoint by `robin_stocks`.
 
 ## Trade safety model
 

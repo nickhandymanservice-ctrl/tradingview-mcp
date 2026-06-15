@@ -1,0 +1,13 @@
+{
+  "_comment": "Copy to .mcp.json (or merge into claude_desktop_config.json). Registers the OFFICIAL Robinhood Agentic Trading MCP (reads + trades, OAuth) alongside this advisor's analysis MCP (tips/metrics/plan). Update the absolute path to mcp_server.py.",
+  "mcpServers": {
+    "robinhood-trading": {
+      "transport": "http",
+      "url": "https://agent.robinhood.com/mcp/trading"
+    },
+    "robinhood-advisor": {
+      "command": "python",
+      "args": ["/absolute/path/to/robinhood-ai-advisor/mcp_server.py"]
+    }
+  }
+}

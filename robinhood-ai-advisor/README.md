@@ -23,6 +23,7 @@ submitted.
 | Trade (carefully) | `propose` → `confirm` flow with a one-time token; live trading **off by default** |
 | Two AI "brains" | (1) offline rules engine, (2) **Claude via MCP** — your claude.ai subscription, **no API key** |
 | Three surfaces | CLI, local web dashboard, MCP server |
+| **Official Robinhood trading** | Works with Robinhood's **Agentic Trading MCP** (OAuth, kill switch). See [`ROBINHOOD_AGENTIC.md`](ROBINHOOD_AGENTIC.md) |
 
 The core (metrics, tips, planner, CLI) needs **only the Python standard
 library** — it runs immediately against a built-in demo portfolio.
@@ -65,6 +66,28 @@ python -m rh_advisor.cli confirm --token 1f7e7b7e
 ---
 
 ## Connect your real Robinhood account
+
+You have two paths:
+
+### A. Official Robinhood Agentic Trading MCP (recommended for trading)
+
+Robinhood's own hosted MCP server (launched May 27, 2026) lets Claude read your
+account and place equity trades via **OAuth — no password, no API key** — with a
+real-time activity feed, per-trade push notifications, and an **instant kill
+switch**.
+
+```bash
+claude mcp add robinhood-trading --transport http https://agent.robinhood.com/mcp/trading
+```
+
+Then let Claude pull your positions from Robinhood and feed them to this app's
+analysis tools (`analyze_holdings`, `plan_for_holdings`). Full walkthrough +
+two-server config: **[`ROBINHOOD_AGENTIC.md`](ROBINHOOD_AGENTIC.md)**.
+
+### B. `robin_stocks` (fallback for a regular, non-agentic account)
+
+Use this if you don't have a Robinhood Agentic Account. It powers this app's own
+read + propose→confirm flow directly.
 
 ```bash
 pip install robin_stocks pyotp
@@ -121,8 +144,10 @@ Then ask Claude things like:
 > trade — but don't confirm it until I say so."*
 
 Tools exposed: `portfolio_summary`, `portfolio_metrics`, `portfolio_tips`,
-`investment_plan`, `propose_trade`, `confirm_trade`, `pending_trade`. The same
-propose→confirm seatbelt applies to Claude.
+`investment_plan`, `propose_trade`, `confirm_trade`, `pending_trade`, plus
+`analyze_holdings` and `plan_for_holdings` (analyze positions passed in from the
+official Robinhood Agentic MCP). The same propose→confirm seatbelt applies to
+Claude.
 
 ---
 
@@ -167,6 +192,7 @@ rh_advisor/
     tips.py            # rules engine (the offline AI brain)
   planner/plan.py      # risk profiles, gap analysis, action checklist
   trading/orders.py    # propose -> confirm token flow
+  ingest.py            # parse external holdings (e.g. Robinhood Agentic MCP)
   service.py           # facade shared by CLI / web / MCP
   cli.py               # argparse CLI
 web/app.py + static/   # FastAPI dashboard (Chart.js)
