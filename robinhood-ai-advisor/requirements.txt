@@ -1,0 +1,16 @@
+# Core advisor (metrics, tips, planner, CLI) needs NOTHING beyond the Python
+# standard library — install the extras below only for the features you use.
+
+# --- Robinhood live account (live mode) ---
+robin_stocks>=3.0.0      # unofficial Robinhood API client
+pyotp>=2.9.0             # generates TOTP 2FA codes for headless login
+
+# --- Web dashboard ---
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# --- MCP server (attach Claude as the AI brain, no API key) ---
+mcp>=1.12.0
+
+# --- Tests ---
+pytest>=8.0.0

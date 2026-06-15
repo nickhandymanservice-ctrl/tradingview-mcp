@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Robinhood AI Advisor</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root { --bg:#0d1117; --card:#161b22; --line:#30363d; --txt:#e6edf3; --muted:#8b949e;
+          --green:#3fb950; --red:#f85149; --amber:#d29922; --accent:#58a6ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+         background:var(--bg); color:var(--txt); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line); display:flex;
+           align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  h1 { font-size:18px; margin:0; }
+  .badge { font-size:12px; padding:3px 8px; border-radius:12px; border:1px solid var(--line);
+           color:var(--muted); }
+  .disclaimer { font-size:12px; color:var(--amber); }
+  main { padding:24px; max-width:1100px; margin:0 auto; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card h2 { font-size:14px; margin:0 0 12px; color:var(--muted); text-transform:uppercase;
+             letter-spacing:.04em; }
+  .stat { font-size:26px; font-weight:600; }
+  .sub { font-size:13px; color:var(--muted); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; }
+  td.num,th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .pos { color:var(--green); } .neg { color:var(--red); }
+  .tip { border-left:3px solid var(--line); padding:8px 12px; margin-bottom:10px; border-radius:4px;
+         background:#0d111733; }
+  .tip.warning { border-color:var(--red); } .tip.suggestion { border-color:var(--amber); }
+  .tip.info { border-color:var(--accent); }
+  .tip .t { font-weight:600; margin-bottom:2px; }
+  .tip .d { font-size:13px; color:var(--muted); }
+  label { font-size:12px; color:var(--muted); display:block; margin:8px 0 2px; }
+  input,select,button { background:#0d1117; color:var(--txt); border:1px solid var(--line);
+                        border-radius:6px; padding:7px 9px; font-size:13px; }
+  button { cursor:pointer; background:var(--accent); color:#08131f; border:none; font-weight:600; }
+  button.secondary { background:#21262d; color:var(--txt); }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:end; }
+  .out { font-size:13px; margin-top:10px; white-space:pre-wrap; color:var(--muted); }
+  canvas { max-height:240px; }
+  .full { grid-column:1/-1; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📈 Robinhood AI Advisor</h1>
+  <div class="row">
+    <span class="badge" id="accountBadge">loading…</span>
+    <span class="disclaimer">Educational only — not financial advice.</span>
+  </div>
+</header>
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>Total value</h2>
+      <div class="stat" id="totalValue">—</div>
+      <div class="sub" id="cashLine">—</div>
+    </div>
+    <div class="card">
+      <h2>Diversification</h2>
+      <div class="stat" id="divScore">—</div>
+      <div class="sub" id="divSub">—</div>
+    </div>
+    <div class="card">
+      <h2>Unrealized gain</h2>
+      <div class="stat" id="gain">—</div>
+      <div class="sub" id="gainSub">—</div>
+    </div>
+  </div>
+
+  <div class="grid" style="margin-top:16px;">
+    <div class="card"><h2>Allocation by holding</h2><canvas id="allocChart"></canvas></div>
+    <div class="card"><h2>By sector</h2><canvas id="sectorChart"></canvas></div>
+  </div>
+
+  <div class="card full" style="margin-top:16px;">
+    <h2>Holdings</h2>
+    <table id="holdings"><thead><tr>
+      <th>Symbol</th><th>Name</th><th class="num">Qty</th><th class="num">Price</th>
+      <th class="num">Value</th><th class="num">Weight</th><th class="num">Gain%</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="grid" style="margin-top:16px;">
+    <div class="card">
+      <h2>AI tips (rules engine)</h2>
+      <div id="tips">loading…</div>
+    </div>
+    <div class="card">
+      <h2>Investment plan</h2>
+      <div class="row">
+        <div><label>Risk</label>
+          <select id="risk">
+            <option>conservative</option><option selected>balanced</option><option>aggressive</option>
+          </select></div>
+        <div><label>Monthly $</label><input id="monthly" type="number" value="500" style="width:90px" /></div>
+        <button onclick="loadPlan()">Build</button>
+      </div>
+      <div id="plan" class="out"></div>
+    </div>
+  </div>
+
+  <div class="card full" style="margin-top:16px;">
+    <h2>Propose a trade (suggest → confirm)</h2>
+    <div class="row">
+      <div><label>Symbol</label><input id="tSym" value="VOO" style="width:90px" /></div>
+      <div><label>Side</label><select id="tSide"><option>buy</option><option>sell</option></select></div>
+      <div><label>Type</label><select id="tType"><option>stock</option><option>crypto</option></select></div>
+      <div><label>USD amount</label><input id="tUsd" type="number" value="200" style="width:100px" /></div>
+      <button onclick="propose()">Propose</button>
+      <button class="secondary" onclick="confirmTrade()">Confirm</button>
+    </div>
+    <div id="tradeOut" class="out"></div>
+  </div>
+</main>
+
+<script>
+const fmtUsd = n => "$" + Number(n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtPct = n => (n*100).toFixed(1) + "%";
+let pendingToken = null;
+
+async function getJSON(url){ const r = await fetch(url); return r.json(); }
+async function postJSON(url, body){
+  const r = await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  return r.json();
+}
+
+async function loadAll(){
+  const [p, m, tips] = await Promise.all([getJSON("/api/portfolio"), getJSON("/api/metrics"), getJSON("/api/tips")]);
+
+  document.getElementById("accountBadge").textContent =
+    `${p.account_label} · ${p.live_trading_armed ? "LIVE ARMED" : "dry-run"}`;
+  document.getElementById("totalValue").textContent = fmtUsd(p.total_value);
+  document.getElementById("cashLine").textContent = `Cash ${fmtUsd(p.cash)} · ${fmtPct(m.cash_pct)}`;
+  document.getElementById("divScore").textContent = m.diversification_score.toFixed(0) + "/100";
+  document.getElementById("divSub").textContent =
+    `${m.num_positions} holdings · top ${m.top_holding_symbol} ${fmtPct(m.top_holding_pct)}`;
+  const g = document.getElementById("gain");
+  g.textContent = fmtUsd(m.total_unrealized_gain);
+  g.className = "stat " + (m.total_unrealized_gain >= 0 ? "pos" : "neg");
+  document.getElementById("gainSub").textContent = fmtPct(m.total_unrealized_gain_pct) + " vs cost";
+
+  // holdings table
+  const tb = document.querySelector("#holdings tbody"); tb.innerHTML = "";
+  for(const w of m.weights){
+    const tr = document.createElement("tr");
+    const cls = w.unrealized_gain_pct >= 0 ? "pos" : "neg";
+    const pos = p.positions.find(x => x.symbol === w.symbol) || {};
+    tr.innerHTML = `<td><b>${w.symbol}</b></td><td>${w.name}</td>
+      <td class="num">${pos.quantity ?? ""}</td>
+      <td class="num">${fmtUsd(pos.price ?? 0)}</td>
+      <td class="num">${fmtUsd(w.equity)}</td>
+      <td class="num">${fmtPct(w.weight)}</td>
+      <td class="num ${cls}">${fmtPct(w.unrealized_gain_pct)}</td>`;
+    tb.appendChild(tr);
+  }
+
+  // tips
+  const td = document.getElementById("tips"); td.innerHTML = "";
+  for(const t of tips){
+    const d = document.createElement("div");
+    d.className = "tip " + t.severity;
+    d.innerHTML = `<div class="t">${t.title}</div><div class="d">${t.detail}</div>`;
+    td.appendChild(d);
+  }
+
+  drawPie("allocChart", m.weights.map(w=>w.symbol), m.weights.map(w=>w.equity));
+  drawPie("sectorChart", Object.keys(m.sector_allocation), Object.values(m.sector_allocation));
+  loadPlan();
+}
+
+let charts = {};
+function drawPie(id, labels, data){
+  const ctx = document.getElementById(id);
+  if(charts[id]) charts[id].destroy();
+  const palette = ["#58a6ff","#3fb950","#d29922","#f85149","#bc8cff","#39c5cf","#ff7b72","#7ee787","#ffa657","#a5d6ff"];
+  charts[id] = new Chart(ctx, {
+    type:"doughnut",
+    data:{labels, datasets:[{data, backgroundColor:labels.map((_,i)=>palette[i%palette.length]), borderColor:"#161b22"}]},
+    options:{plugins:{legend:{labels:{color:"#8b949e",boxWidth:12,font:{size:11}},position:"right"}}}
+  });
+}
+
+async function loadPlan(){
+  const risk = document.getElementById("risk").value;
+  const monthly = document.getElementById("monthly").value || 0;
+  const plan = await getJSON(`/api/plan?risk=${risk}&monthly=${monthly}`);
+  let txt = `Target (${plan.risk_profile}):\n`;
+  for(const r of plan.rows){
+    const dir = r.gap_usd > 0 ? "add" : "trim";
+    txt += `  ${r.bucket.padEnd(10)} cur ${fmtPct(r.current_pct)} → tgt ${fmtPct(r.target_pct)}  (${dir} ${fmtUsd(Math.abs(r.gap_usd))})\n`;
+  }
+  txt += "\nActions:\n" + plan.actions.map((a,i)=>`  ${i+1}. ${a}`).join("\n");
+  document.getElementById("plan").textContent = txt;
+}
+
+async function propose(){
+  const body = {symbol:document.getElementById("tSym").value, side:document.getElementById("tSide").value,
+                asset_type:document.getElementById("tType").value, amount_usd:parseFloat(document.getElementById("tUsd").value)};
+  const res = await postJSON("/api/propose", body);
+  const out = document.getElementById("tradeOut");
+  if(res.error){ out.textContent = "Error: " + res.error; pendingToken=null; return; }
+  pendingToken = res.token;
+  out.textContent = res.summary + (res.warnings.length ? "\n\nWarnings:\n- " + res.warnings.join("\n- ") : "")
+                    + `\n\nClick Confirm to submit (token ${res.token}).`;
+}
+
+async function confirmTrade(){
+  if(!pendingToken){ document.getElementById("tradeOut").textContent = "Propose a trade first."; return; }
+  const res = await postJSON("/api/confirm", {token:pendingToken});
+  const out = document.getElementById("tradeOut");
+  if(res.error){ out.textContent = "Error: " + res.error; return; }
+  out.textContent = `[${res.dry_run ? "DRY-RUN" : "LIVE"}] ${res.accepted ? "ACCEPTED" : "not submitted"}: ${res.detail}`;
+  pendingToken = null;
+}
+
+loadAll();
+</script>
+</body>
+</html>
